@@ -1,2 +1,20 @@
 # CalcIt
-simple calculator program
+simple calculator program for [__"Calc It"__]() programming event
+
+# Installation
+___
+Just run the __setup.sh__ script, and let it do it's work
+
+you can follow these commands :
+
+```bash
+
+./setup.sh
+source /env.sh
+```
+
+to run the program just use : 
+```bash
+cd build
+./CalcIt
+```
