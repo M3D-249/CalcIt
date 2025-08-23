@@ -15,7 +15,7 @@ YELLOW='\033[0;33m'
 NC='\033[0m'
 
 print_status() {
-    echo -e "${GREEN}[+]${NC} $1"
+    echo -e "${GREEN}==>${NC} $1"
 }
 
 print_warning() {

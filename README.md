@@ -2,7 +2,6 @@
 simple calculator program for [__"Calc It"__]() programming event
 
 # Installation
-___
 Just run the __setup.sh__ script, and let it do it's work
 
 you can follow these commands :

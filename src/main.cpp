@@ -5,21 +5,21 @@ int main()
 {
 	std::cout << "Enter an arithmetic expression : ";
 
-	std::vector<std::string> tokens;
+	std::deque<Token> postfix;
 	std::string line;
 	while (std::getline(std::cin, line))
 	{
-		if (ValidateExpresion(line, &tokens))
+		if (InfixToPostfix(line, &postfix))
 		{
 			std::cout << "[ ";
-			for (auto token : tokens)
+			for (auto token : postfix)
 			{
-				std::cout << "'" << token << "'  ";
+				std::cout << "'" << token.value << "'  ";
 			}
 			std::cout << " ]\n";
 		}
 
-		tokens.clear();
+		postfix.clear();
 		std::cout << "Enter an arithmetic expression : ";
 	}
 
