@@ -41,7 +41,7 @@ bool CalcIt(const std::string& expression)
 	std::deque<Token> postfix;
 	if (InfixToPostfix(expression, &postfix))
 	{
-
+        /// TODO: Complete it :)
 	}
 	else
 		success = false;
@@ -64,7 +64,9 @@ bool EvaluatePostfix(std::deque<Token>* postfix)
 			ArithmeticOperator op = _operators_map.at(postfix->at(lastIndex).value[0]);
 			if (op.unary)
 			{
-				
+				/// TODO: figure a way for distinguishing between functions and operators 
+                /// may be return to class speration ?
+                /// TODO: complete the code :)
 			}
 		}
 	}
@@ -98,7 +100,7 @@ bool InfixToPostfix(const std::string& expression, std::deque<Token>* postfix)
                 if (expression[i] == '.')
                 {
                     if (floatSeen)
-                        throw InvalidArithmeticExpressionError("Multiple dots in number at " + std::to_string(__LINE__));
+                        throw InvalidArithmeticExpressionError("Multiple dots in number index: " + std::to_string(i));
                
 					floatSeen = true;
                 }
@@ -124,7 +126,7 @@ bool InfixToPostfix(const std::string& expression, std::deque<Token>* postfix)
 
             std::string funcName = funcBuffer.str();
             if (!IsValidArithmeticFunction(funcName))
-                throw InvalidArithmeticExpressionError("Invalid function: " + funcName +" at" + std::to_string(__LINE__));
+                throw InvalidArithmeticExpressionError("Invalid function: " + funcName);
 
             operatorStack.push_back(_functions_map.at(funcName));
             continue;
