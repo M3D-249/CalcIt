@@ -14,6 +14,5 @@ source /env.sh
 
 to run the program just use : 
 ```bash
-cd build
-./CalcIt
+CalcIt
 ```
