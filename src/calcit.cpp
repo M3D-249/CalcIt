@@ -1,5 +1,6 @@
 #include "../include/calcit.hpp"
 #include <cstddef>
+#include <format>
 #include <sstream>
 #include <cctype>
 #include <algorithm>
@@ -79,6 +80,7 @@ bool InfixToPostfix(const std::string& expression, std::deque<Token>* postfix)
     std::stringstream numBuffer, funcBuffer;
     std::deque<ArithmeticOperator> operatorStack;
     int leftBracket = 0;
+    Token prev{""};
 
     for (size_t i = 0; i < expression.size(); ++i)
     {
@@ -108,7 +110,8 @@ bool InfixToPostfix(const std::string& expression, std::deque<Token>* postfix)
             }
 
             --i; // decrement the extra increment
-            postfix->push_back(Token{numBuffer.str()});
+            prev = Token{numBuffer.str()};
+            postfix->push_back(prev);
             continue;
         }
 
@@ -128,6 +131,7 @@ bool InfixToPostfix(const std::string& expression, std::deque<Token>* postfix)
             if (!IsValidArithmeticFunction(funcName))
                 throw InvalidArithmeticExpressionError("Invalid function: " + funcName);
 
+            prev = _functions_map.at(funcName);
             operatorStack.push_back(_functions_map.at(funcName));
             continue;
         }
@@ -143,6 +147,38 @@ bool InfixToPostfix(const std::string& expression, std::deque<Token>* postfix)
 				postfix->push_back(Token(op.value.c_str()));
 			}
 
+
+            // ----- Hnadling negation -----
+            if (ch == '-') 
+            {
+                if (!prev.value.empty())
+                {
+                    if (prev.value == "(") // negate
+                    {
+                        operatorStack.push_back(
+                            ArithmeticOperator("-", 1, true, true));
+                        continue;
+                    }
+
+                    // operator
+                    if ((IsArithmeticOperator(prev.value[0]) || IsValidArithmeticFunction(prev.value)))
+                    {
+                        // treat the minus sign as a negation and insert it later to the number
+                        postfix->push_back(Token{"-"});
+                        operatorStack.push_back(
+                            ArithmeticOperator("-", 1, true, true));
+                        continue;
+                    }
+                }
+                else // negate if empty
+                {
+                    operatorStack.push_back(
+                        ArithmeticOperator("-", 1, true, true));
+                    continue;
+                }
+            }
+
+            prev = _operators_map.at(ch);
 			operatorStack.push_back(_operators_map.at(ch));
 			continue;
         }
@@ -150,6 +186,7 @@ bool InfixToPostfix(const std::string& expression, std::deque<Token>* postfix)
         // --- Left Parenthesis ---
         if (ch == '(')
         {
+            prev = {"("};
             operatorStack.push_back(ArithmeticOperator("(", 0, true));
             ++leftBracket;
             continue;
@@ -159,7 +196,8 @@ bool InfixToPostfix(const std::string& expression, std::deque<Token>* postfix)
         if (ch == ')')
         {
             if (leftBracket == 0)
-                throw InvalidArithmeticExpressionError("Unmatched closing parenthesis at " + std::to_string(__LINE__));
+                throw InvalidArithmeticExpressionError(
+                std::format("Unmatched closing parenthesis at {}", i));
 
             while (!operatorStack.empty() && operatorStack.back().value != "(")
             {
@@ -168,19 +206,21 @@ bool InfixToPostfix(const std::string& expression, std::deque<Token>* postfix)
             }
 
             if (operatorStack.empty())
-                throw InvalidArithmeticExpressionError("Mismatched parentheses at " + std::to_string(__LINE__));
+                throw InvalidArithmeticExpressionError(
+                    std::format("Mismatched parentheses at {}", i));
 
+            prev = {")"};
             operatorStack.pop_back(); // remove "("
             --leftBracket;
             continue;
         }
 
         // --- Unknown Character ---
-        throw InvalidArithmeticExpressionError(std::string("Unknown character: ") + ch);
+        throw InvalidArithmeticExpressionError(std::format("Unknown character: {}",  ch));
     }
 
     if (leftBracket != 0)
-        throw InvalidArithmeticExpressionError("Unmatched opening parenthesis at " + std::to_string(__LINE__));
+        throw InvalidArithmeticExpressionError("Unmatched opening parenthesis");
 
     while (!operatorStack.empty())
     {
@@ -228,14 +268,12 @@ bool OperatorWithHigherPrecedence(std::deque<ArithmeticOperator>* ops, const Ari
 	{
 		auto& o2 = ops->at(i);
 
+        if (o2.value == "(")
+            return false;
+
 		if (o2.precedence > o1.precedence /*|| (o2.precedence == o1.precedence && o1.leftAssociative)*/)
 		// the commented line works but it makes the postfix output ugly, personal prefrence though :)
-		{
-			if (o2.value == "(")
-				return false;
-			else
-				return true;
-		}
+            return true;
 	}
 
 	return false;

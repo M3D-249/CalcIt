@@ -1,5 +1,6 @@
 project('CalcIt', 'cpp',
     version: '1.0.0',
+    meson_version: '>= 0.61.0',
     license: 'MIT',
     default_options: [
         'cpp_std=c++23',
@@ -9,6 +10,8 @@ project('CalcIt', 'cpp',
         'b_lto=true',
     ]
 )
+
+
 
 cpp = meson.get_compiler('cpp')
 add_project_arguments(

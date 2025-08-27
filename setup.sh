@@ -149,12 +149,10 @@ setup_build () {
 build_project() {
     print_status "Building project..."
 
-    cd "${BUILD_DIR}" || print_error "Build directory not found"
-    ninja
-    ninja install
-    cd ..
+    chmod +x "build.sh"
+    source build.sh
 
-    print_status "Project built and installed"
+    # print_status "Project built and installed"
 }
 
 create_env_script() {

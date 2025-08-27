@@ -3,7 +3,7 @@
 #include <sys/types.h>
 #include <map>
 
-class ArithmeticOperator;
+struct ArithmeticOperator;
 struct Token;
 
 extern std::map<char, ArithmeticOperator> _operators_map;
@@ -31,17 +31,22 @@ struct Token
     Token(const std::string& value) : value(value) { }
 };
 
-class ArithmeticOperator
+struct ArithmeticOperator : public Token
 {
 public:
-    std::string value;
     uint precedence;
     bool leftAssociative;
     bool unary; // false means binary
 
     explicit ArithmeticOperator(const std::string& value, uint precedence, bool leftAssociative, bool unary=false) 
-        : value(value), precedence(precedence), leftAssociative(leftAssociative), unary(unary)
+        : Token(value), precedence(precedence), leftAssociative(leftAssociative), unary(unary)
     {  }
 
     ArithmeticOperator() = delete; 
+};
+
+struct Number : public Token
+{
+    Number(const std::string& value) : Token(value)
+    {  }
 };
