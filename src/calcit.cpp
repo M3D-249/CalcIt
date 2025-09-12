@@ -1,12 +1,12 @@
 #include "../include/calcit.hpp"
 #include <cstddef>
-#include <format>
 #include <sstream>
 #include <cctype>
 #include <algorithm>
 #include <string>
 #include <deque>
 #include <vector>
+#include <stack>
 
 #pragma region Maps & Lists
 std::map<char, ArithmeticOperator> _operators_map = 
@@ -16,71 +16,60 @@ std::map<char, ArithmeticOperator> _operators_map =
 	{'*', ArithmeticOperator("*", 2, true, false) },
 	{'/', ArithmeticOperator("/", 2, true, false) },
 	{'%', ArithmeticOperator("%", 2, true, false) },
-	{'^', ArithmeticOperator("^", 3, false, false) },
-	{'!', ArithmeticOperator("!", 3, false, true) }
+	{'^', ArithmeticOperator("^", 4, false, false)},
+	{'!', ArithmeticOperator("!", 4, true, true)  }
 };
 
 std::map<std::string, ArithmeticOperator> _functions_map = 
 {
-	{"sin", ArithmeticOperator("sin", 3, true, true)},
-	{"cos", ArithmeticOperator("cos", 3, true, true)},
-	{"tan", ArithmeticOperator("tan", 3, true, true)},
-	{"cot", ArithmeticOperator("cot", 3, true, true)},
-	{"sec", ArithmeticOperator("sec", 3, true, true)},
-	{"csc", ArithmeticOperator("csc", 3, true, true)},
-	{"log", ArithmeticOperator("csc", 3, true, true)},
+	{"u-",  ArithmeticOperator("u-", 3, false, true)},
+	{"sin", ArithmeticOperator("sin", 4, true, true)},
+	{"cos", ArithmeticOperator("cos", 4, true, true)},
+	{"tan", ArithmeticOperator("tan", 4, true, true)},
+	{"cot", ArithmeticOperator("cot", 4, true, true)},
+	{"sec", ArithmeticOperator("sec", 4, true, true)},
+	{"csc", ArithmeticOperator("csc", 4, true, true)},
+	{"log", ArithmeticOperator("log", 4, true, true)},
+	{"sqrt",ArithmeticOperator("sqrt", 4, true, true)},
 };
 
-std::vector<std::string> _functions = { "sin", "cos", "tan", "cotan", "ctan", "sec", "cosec", "csc"};
+std::vector<char> _operators = { '+', '-', '*', '/', '%', '^', '!' };
+std::vector<std::string> _functions = { "sin", "cos", "tan", "cotan", "ctan", "sec", "cosec", "csc", "log", "sqrt"};
 #pragma endregion
 
 #pragma region Implementations
-bool CalcIt(const std::string& expression)
+bool EvaluatePostfix(std::deque<std::string>* postfix)
 {
-	bool success = true;
+	std::stack<size_t> result;
 
-	std::deque<Token> postfix;
-	if (InfixToPostfix(expression, &postfix))
-	{
-        /// TODO: Complete it :)
-	}
-	else
-		success = false;
+    for (auto& token : *postfix)
+    {
+        if (isdigit(token[0]) || (token.size() > 1 && token[0] == '-'))
+        {
+            result.push(stoll(token));
+        }
+        else
+        {
+            if (token == "u+")
+                continue;
 
-	return success;
-}
+            if (token == "u-")
+            {
 
-bool EvaluatePostfix(std::deque<Token>* postfix)
-{
-	int lastIndex = postfix->size() - 1;
-	while (IsArithmeticOperator(postfix->at(lastIndex).value[0]) || IsValidArithmeticFunction(postfix->at(lastIndex).value))
-	{
-		--lastIndex;
-	}
-
-	for (int i = lastIndex; i >= 0; --i)
-	{
-		if (IsArithmeticOperator(postfix->at(lastIndex).value[0]))
-		{
-			ArithmeticOperator op = _operators_map.at(postfix->at(lastIndex).value[0]);
-			if (op.unary)
-			{
-				/// TODO: figure a way for distinguishing between functions and operators 
-                /// may be return to class speration ?
-                /// TODO: complete the code :)
-			}
-		}
-	}
+            }
+            // operator
+        }
+    }
 	
 	return true;
 }
 
-bool InfixToPostfix(const std::string& expression, std::deque<Token>* postfix)
+bool InfixToPostfix(const std::string& expression, std::deque<std::string>* postfix)
 {
     std::stringstream numBuffer, funcBuffer;
     std::deque<ArithmeticOperator> operatorStack;
     int leftBracket = 0;
-    Token prev{""};
+    std::string prev {""};
 
     for (size_t i = 0; i < expression.size(); ++i)
     {
@@ -110,7 +99,7 @@ bool InfixToPostfix(const std::string& expression, std::deque<Token>* postfix)
             }
 
             --i; // decrement the extra increment
-            prev = Token{numBuffer.str()};
+            prev = numBuffer.str();
             postfix->push_back(prev);
             continue;
         }
@@ -131,7 +120,7 @@ bool InfixToPostfix(const std::string& expression, std::deque<Token>* postfix)
             if (!IsValidArithmeticFunction(funcName))
                 throw InvalidArithmeticExpressionError("Invalid function: " + funcName);
 
-            prev = _functions_map.at(funcName);
+            prev = funcName;
             operatorStack.push_back(_functions_map.at(funcName));
             continue;
         }
@@ -139,46 +128,41 @@ bool InfixToPostfix(const std::string& expression, std::deque<Token>* postfix)
         // --- Operator ---
         if (IsArithmeticOperator(ch))
         {
-			// there is an operator with high precedence which is not (
-			while (OperatorWithHigherPrecedence(&operatorStack, _operators_map.at(ch))) 
-			{
-				ArithmeticOperator op = operatorStack.back();
-				operatorStack.pop_back();
-				postfix->push_back(Token(op.value.c_str()));
-			}
-
-
             // ----- Hnadling negation -----
-            if (ch == '-') 
+            if (ch == '-' || ch == '+') 
             {
-                if (!prev.value.empty())
+                std::string token = "u";
+                token += ch;
+
+                if ((!prev.empty() && 
+                    (prev == "(" || (IsArithmeticOperator(prev[0]) && prev[0] != '!'))) ||
+                    prev.empty())
                 {
-                    if (prev.value == "(") // negate
-                    {
-                        operatorStack.push_back(
-                            ArithmeticOperator("-", 1, true, true));
+                    // ignore '+' it does nothing
+                    if (ch == '+')
                         continue;
+
+                    // unary minus
+        			while (OperatorWithHigherPrecedence(&operatorStack,_functions_map.at(token))) 
+                    {
+                        postfix->push_back(operatorStack.back().value);
+                        operatorStack.pop_back();
                     }
 
-                    // operator
-                    if ((IsArithmeticOperator(prev.value[0]) || IsValidArithmeticFunction(prev.value)))
-                    {
-                        // treat the minus sign as a negation and insert it later to the number
-                        postfix->push_back(Token{"-"});
-                        operatorStack.push_back(
-                            ArithmeticOperator("-", 1, true, true));
-                        continue;
-                    }
-                }
-                else // negate if empty
-                {
-                    operatorStack.push_back(
-                        ArithmeticOperator("-", 1, true, true));
+                    prev = token;
+                    operatorStack.push_back(_functions_map.at(token));
                     continue;
                 }
             }
 
-            prev = _operators_map.at(ch);
+			// there is an operator with high precedence which is not (
+			while (OperatorWithHigherPrecedence(&operatorStack, _operators_map.at(ch))) 
+			{
+				postfix->push_back(operatorStack.back().value);
+				operatorStack.pop_back();
+			}
+
+            prev = std::string(1, ch);
 			operatorStack.push_back(_operators_map.at(ch));
 			continue;
         }
@@ -186,7 +170,7 @@ bool InfixToPostfix(const std::string& expression, std::deque<Token>* postfix)
         // --- Left Parenthesis ---
         if (ch == '(')
         {
-            prev = {"("};
+            prev = "(";
             operatorStack.push_back(ArithmeticOperator("(", 0, true));
             ++leftBracket;
             continue;
@@ -196,27 +180,26 @@ bool InfixToPostfix(const std::string& expression, std::deque<Token>* postfix)
         if (ch == ')')
         {
             if (leftBracket == 0)
-                throw InvalidArithmeticExpressionError(
-                std::format("Unmatched closing parenthesis at {}", i));
+                throw InvalidArithmeticExpressionError("Unmatched closing parenthesis at "+std::to_string(i));
 
             while (!operatorStack.empty() && operatorStack.back().value != "(")
             {
-                postfix->push_back(Token{operatorStack.back().value});
+                postfix->push_back(operatorStack.back().value);
                 operatorStack.pop_back();
             }
 
             if (operatorStack.empty())
                 throw InvalidArithmeticExpressionError(
-                    std::format("Mismatched parentheses at {}", i));
+                    "Mismatched parentheses at "+std::to_string(i));
 
-            prev = {")"};
+            prev = ")";
             operatorStack.pop_back(); // remove "("
             --leftBracket;
             continue;
         }
 
         // --- Unknown Character ---
-        throw InvalidArithmeticExpressionError(std::format("Unknown character: {}",  ch));
+        throw InvalidArithmeticExpressionError("Unknown character: "+std::string(1, ch));
     }
 
     if (leftBracket != 0)
@@ -224,27 +207,15 @@ bool InfixToPostfix(const std::string& expression, std::deque<Token>* postfix)
 
     while (!operatorStack.empty())
     {
-        postfix->push_back(Token{operatorStack.back().value});
+        postfix->push_back(operatorStack.back().value);
         operatorStack.pop_back();
     }
-
     return true;
 }
 
 bool IsArithmeticOperator(const char& ch)
 {
-	switch (ch)
-	{
-	case '+':
-	case '-':
-	case '*':
-	case '/':
-	case '^':
-	case '%':
-	case '!':
-	return true;
-	default: return false;
-	}
+    return std::find(_operators.begin(), _operators.end(), ch) != _operators.end();
 }
 
 bool IsValidArithmeticFunction(const std::string& func)
@@ -271,8 +242,7 @@ bool OperatorWithHigherPrecedence(std::deque<ArithmeticOperator>* ops, const Ari
         if (o2.value == "(")
             return false;
 
-		if (o2.precedence > o1.precedence /*|| (o2.precedence == o1.precedence && o1.leftAssociative)*/)
-		// the commented line works but it makes the postfix output ugly, personal prefrence though :)
+		if (o2.precedence > o1.precedence || (o2.precedence == o1.precedence && o1.leftAssociative))
             return true;
 	}
 

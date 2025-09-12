@@ -1,6 +1,6 @@
 project('CalcIt', 'cpp',
     version: '1.0.0',
-    meson_version: '>= 0.61.0',
+    meson_version: '>= 1.1',
     license: 'MIT',
     default_options: [
         'cpp_std=c++23',
@@ -11,8 +11,6 @@ project('CalcIt', 'cpp',
     ]
 )
 
-
-
 cpp = meson.get_compiler('cpp')
 add_project_arguments(
     cpp.get_supported_arguments([
@@ -21,16 +19,17 @@ add_project_arguments(
     language: 'cpp'
 )
 
-if host_machine.system() == 'linux'
-    # linux
-elif host_machine.system() == 'windows'
-    #widnows
-endif
+subdir('include')
 
-build_examples = get_option('examples')
-build_tests = get_option('tests')
+calcit_lib = static_library('calcit_lib', 'src/calcit.cpp',
+    include_directories: get_variable('my_project_incdir')
+)
 
 subdir('src')
+
+# Examples and tests
+build_examples = get_option('examples')
+build_tests = get_option('tests')
 
 if build_examples
     subdir('examples')
@@ -39,14 +38,3 @@ endif
 if build_tests
     subdir('tests')
 endif
-
-
-src = files('src/calcit.cpp', 'src/main.cpp')
-
-# build main exe
-executable('CalcIt',
-    src,
-    dependencies: calcit_dep,
-    install: true
-)
-

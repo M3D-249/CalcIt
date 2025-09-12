@@ -44,7 +44,9 @@
 #directories
 .cache/
 .vscode/
+.idea/
 build/
 
 #files
 env.sh
+niceErrors.txt

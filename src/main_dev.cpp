@@ -5,19 +5,15 @@
 
 int main(int argc, char** argv)
 {
-	if (argc < 2)
-	{
-		std::cout << "Usage: CalcIt <expression>.....<xpression>\n";
-		return 1;
-	}
-	
-	std::deque<std::string> postfix;
+	std::cout << "Enter an arithmetic expression : ";
 
-	for (int i = 1; i < argc; ++i)
+	std::deque<std::string> postfix;
+	std::string line;
+	while (std::getline(std::cin, line))
 	{
-		if (InfixToPostfix(argv[i], &postfix))
+		if (InfixToPostfix(line, &postfix))
 		{
-			std::cout << argv[i] << " :: [ ";
+			std::cout << "[ ";
 			for (auto token : postfix)
 			{
 				std::cout << "'" << token << "' ";
@@ -27,6 +23,7 @@ int main(int argc, char** argv)
 		}
 
 		postfix.clear();
+		std::cout << "Enter an arithmetic expression : ";
 	}
 
 	return 0;

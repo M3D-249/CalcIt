@@ -136,7 +136,32 @@ setup_build () {
 
     mkdir -p "${BUILD_DIR}"
 
-    meson setup "${BUILD_DIR}" \
+    read -r -n 1 -p "Setup For Development ? (y/n): " DEV
+    echo
+    read -r -n 1 -p "Build Examples ? (y/n): " EXAMPLES
+    echo
+    read -r -n 1 -p "Build Tests ? (y/n): " TESTS
+    echo
+
+    if [[ "$DEV" =~ ^[Yy]$ ]]; then
+        DEV=true
+    else
+        DEV=false    
+    fi
+
+    if [[ "$EXAMPLES" =~ ^[Yy]$ ]]; then
+        EXAMPLES=true
+    else
+        EXAMPLES=false    
+    fi
+
+    if [[ "$TESTS" =~ ^[Yy]$ ]]; then
+        TESTS=true
+    else
+        TESTS=false    
+    fi
+
+    meson setup "${BUILD_DIR}" -Ddev=$DEV -Dexamples=$EXAMPLES -Dtests=$TESTS \
         --prefix="${INSTALL_PREFIX}" \
         --buildtype="${BUILD_TYPE}" \
         -Dcpp_std=c++23 \
@@ -205,7 +230,7 @@ main() {
     read -r -n 1 -p "Add environment to your shell profile? (y/n): " REPLY
     echo
     if [[ "$REPLY" =~ ^[Yy]$ ]]; then
-        add_to_profile
+        add_to_profile    
     fi
 
     print_status "Setup Complete!"
