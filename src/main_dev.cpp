@@ -3,7 +3,7 @@
 #include <ostream>
 #include <filesystem>
 
-int main(int argc, char** argv)
+int main()
 {
 	std::cout << "Enter an arithmetic expression : ";
 
@@ -18,8 +18,10 @@ int main(int argc, char** argv)
 			{
 				std::cout << "'" << token << "' ";
 			}
-			
 			std::cout << " ]\n";
+			
+			double result = EvaluatePostfix(&postfix);
+			printf("result = %0.5lf\n", result);
 		}
 
 		postfix.clear();

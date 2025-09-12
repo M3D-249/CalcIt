@@ -10,23 +10,11 @@ int main(int argc, char** argv)
 		std::cout << "Usage: CalcIt <expression>.....<xpression>\n";
 		return 1;
 	}
-	
-	std::deque<std::string> postfix;
 
 	for (int i = 1; i < argc; ++i)
 	{
-		if (InfixToPostfix(argv[i], &postfix))
-		{
-			std::cout << argv[i] << " :: [ ";
-			for (auto token : postfix)
-			{
-				std::cout << "'" << token << "' ";
-			}
-			
-			std::cout << " ]\n";
-		}
-
-		postfix.clear();
+		double result = CalcIt(argv[i]);
+		printf("result = %lf\n", result);
 	}
 
 	return 0;

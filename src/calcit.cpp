@@ -7,6 +7,7 @@
 #include <deque>
 #include <vector>
 #include <stack>
+#include <cmath>
 
 #pragma region Maps & Lists
 std::map<char, ArithmeticOperator> _operators_map = 
@@ -38,9 +39,20 @@ std::vector<std::string> _functions = { "sin", "cos", "tan", "cotan", "ctan", "s
 #pragma endregion
 
 #pragma region Implementations
-bool EvaluatePostfix(std::deque<std::string>* postfix)
+double CalcIt(const char* expression)
 {
-	std::stack<size_t> result;
+    std::deque<std::string> postfix;
+    double result = 0;
+
+    if (InfixToPostfix(expression, &postfix))
+        result = EvaluatePostfix(&postfix);
+    
+    return result;
+}
+
+double EvaluatePostfix(std::deque<std::string>* postfix)
+{
+	std::stack<double> result;
 
     for (auto& token : *postfix)
     {
@@ -50,22 +62,70 @@ bool EvaluatePostfix(std::deque<std::string>* postfix)
         }
         else
         {
-            if (token == "u+")
-                continue;
-
             if (token == "u-")
             {
+                double val = result.top();
+                result.pop();
 
+                val *= -1;
+                result.push(val);
+                continue;
             }
-            // operator
+
+            if (token == "!")
+            {
+                double val = result.top();
+                result.pop();
+
+                val = Factorial(val);
+                result.push(val);
+                continue;
+            }
+
+            if (IsArithmeticOperator(token[0]))
+            {
+                double val1 = result.top();
+                result.pop();
+                double val2 = result.top();
+                result.pop();
+
+                if (val2 == 0 && token[0] == '/')
+                {
+                    printf("Division by thero isn't allowed!");
+                    return 0;
+                }
+
+                double value = EvaluateBinaryOperator(token[0], val1, val2);
+                result.push(value);
+                continue;
+            }
+
+            if (IsValidArithmeticFunction(token))
+            {
+                double val = result.top();
+                result.pop();
+
+                val = EvaluateFunction(token, val);
+                result.push(val);
+                continue;
+            }
         }
     }
+
+    if (result.size() > 1)
+    {
+        printf("Invalid Postfix");
+        return 0;
+    }
 	
-	return true;
+	return result.top();
 }
 
 bool InfixToPostfix(const std::string& expression, std::deque<std::string>* postfix)
 {
+    if (expression.empty())
+        return false;
+
     std::stringstream numBuffer, funcBuffer;
     std::deque<ArithmeticOperator> operatorStack;
     int leftBracket = 0;
@@ -211,6 +271,57 @@ bool InfixToPostfix(const std::string& expression, std::deque<std::string>* post
         operatorStack.pop_back();
     }
     return true;
+}
+
+double EvaluateBinaryOperator(char ch, double operand1, double operand2)
+{
+    switch (ch)
+    {
+    case '+': return operand1 + operand2;
+    case '-': return operand1 - operand2;
+    case '*': return operand1 * operand2;
+    case '/': return operand1 / operand2;
+    case '%': return (int)operand1 % (int)operand2;
+    case '^': return std::pow(operand1, operand2);
+    default:
+        return 0;
+    }
+}
+
+double EvaluateFunction(const std::string& func, double operand)
+{
+    double operand_radians = operand * M_PI / 180;
+    if (func == "sin")
+        return std::sin(operand_radians);
+    else if (func == "cos")
+        return std::cos(operand_radians);
+    else if (func ==  "tan")
+        return std::tan(operand_radians);
+    else if (func == "cotan" || func == "ctan")
+        return 1 / std::tan(operand_radians);
+    else if (func == "sec")
+        return 1 / std::cos(operand_radians);
+    else if (func == "cosec" || func == "csc")
+        return 1 / std::sin(operand_radians);
+    else if (func == "log")
+        return std::log(operand);
+    else if (func == "sqrt")
+        return sqrt(operand);
+    else
+        return 0;
+}
+
+double Factorial(double value)
+{
+    double fac = 1;
+    double i = 2;
+    while (i <= value)
+    {
+        fac *= i;
+        i += 1;
+    } 
+        
+    return fac;
 }
 
 bool IsArithmeticOperator(const char& ch)
