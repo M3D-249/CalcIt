@@ -6,6 +6,13 @@ PROJECT_NAME="CalcIt"
 BUILD_DIR="build"
 INSTALL_PREFIX="${HOME}/.local/${PROJECT_NAME}"
 
+
+if [ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin"]; then
+    if [[ "${INSTALL_PREFIX}" == /* ]]; then
+        INSTALL_PREFIX="$(cygpath -w "${INSTALL_PREFIX}" 2>/dev/null || echo "${INSTALL_PREFIX}")"
+    fi
+fi
+
 BUILD_TYPES=("debug" "debugoptimized" "release")
 BUILD_TYPE="debugoptimized"
 
@@ -18,10 +25,16 @@ declare -A pkg_names=(
     ["git"]="git"
     ["gcc"]="gcc"
     ["gdb"]="gdb"
-    ["clang"]="clang"
     ["ninja"]="ninja-build"
     ["meson"]="meson"
 )
+
+case "$OSTYPE" in 
+    msys*)
+        pkg_names["ninja"] = "ninja"
+        pkg_names["meson"] = "meson"
+        ;;
+esac
 
 print_status() {
     echo -e "${GREEN}==>${NC} $1"
@@ -37,25 +50,45 @@ print_error() {
 }
 
 detect_pkg_manager () {
-    if command -v apt-get &> /dev/null; then
-        echo "apt"
-    elif command -v dnf &> /dev/null; then
-        echo "dnf"
-    elif command -v yum &> /dev/null; then
-        echo "yum"
-    elif command -v pacman &> /dev/null; then
-        echo "pacman"
-    elif command -v zypper &> /dev/null; then
-        echo "zypper"
-    elif command -v apk &> /dev/null; then
-        echo "apk"
-    else
-        print_error "No supported package manager found."
-    fi
+    case "$OSTYPE" in
+        linux*)
+            if is_installed apt-get; then
+                echo "apt"
+            elif is_installed dnf; then
+                echo "dnf"
+            elif is_installed yum; then
+                echo "yum"
+            elif is_installed pacman; then
+                echo "pacman"
+            elif is_installed zypper; then
+                echo "zypper"
+            elif is_installed apk; then
+                echo "apk"
+            else
+                print_error "No supported package manager found."
+            fi
+            ;;
+        msys*)
+            echo "choco"
+            ;;
+        cygwin*)
+            echo "choco"
+            ;;
+        *)
+            print_error "Unsupported OS: $OSTYPE"
+            ;;
+    esac
 }
 
 is_installed () {
     command -v "$1" &>/dev/null
+}
+
+install_chocolatey() {
+    powershell.exe -NoProfile -ExecutionPolicy Bypass \
+        -Command "[System.Net.ServicePointManager]::SecurityProtocol = 3072; Set-ExecutionPolicy Bypass -Scope Process -Force; \
+        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"
+    export PATH="$PATH:/c/ProgramData/chocolatey/bin"
 }
 
 install_dependencies () {
@@ -65,32 +98,30 @@ install_dependencies () {
     pkg_manager=$(detect_pkg_manager)
     print_status "Package manager detected: ${pkg_manager}"
 
-    # Adjust for package manager naming
     case $pkg_manager in
-        "pacman")
-            pkg_names["ninja"]="ninja"
-            ;;
-        "apk")
-            pkg_names["ninja"]="ninja"
-            pkg_names["meson"]="meson py3-setuptools"
-            ;;
-    esac
+        "apt" | "dnf" | "yum" | "pacman" | "zypper" | "apk")
+            case $pkg_manager in
+                "pacman")
+                    pkg_names["ninja"]="ninja"
+                    ;;
+                "apk")
+                    pkg_names["ninja"]="ninja"
+                    pkg_names["meson"]="meson py3-setuptools"
+                    ;;
+            esac
 
-    # Only add missing tools
-    local pkgs=()
-    for tool in git clang gcc gdb ninja meson; do
-        if ! is_installed "$tool"; then
-            pkgs+=("${pkg_names[$tool]}")
-        fi
-    done
+            local pkgs=()
+            for tool in git gcc gdb ninja meson; do
+                if ! is_installed "$tool"; then
+                    pkgs+=("${pkg_names[$tool]}")
+                fi
+            done
 
-    if [ ${#pkgs[@]} -eq 0 ]; then
-        print_status "All required packages are already installed."
-        return
-    fi
+            if [ ${#pkgs[@]} -eq 0 ]; then
+                print_status "All required pkgs are installed!"
+                return
+            fi
 
-    case $OSTYPE in
-        linux*)
             case $pkg_manager in
                 "apt")
                     sudo apt update
@@ -113,18 +144,54 @@ install_dependencies () {
                     ;;
             esac
             ;;
-        msys*)
-            if command -v choco &> /dev/null; then
-                choco install "${pkgs[@]}"
-            else
-                powershell.exe -NoProfile -InputFormat None -ExecutionPolicy Bypass \
-                    -Command "[System.Net.ServicePointManager]::SecurityProtocol = 3072; \
-                    iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"
-                export PATH="$PATH:/c/ProgramData/chocolatey/bin"
+        "choco")
+            if ! is_installed choco; then
+                check_admin() {
+                    powershell.exe -Command "(New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)" | grep -q "True"
+                }
+                
+                install_chocolatey() {
+                    powershell.exe -NoProfile -ExecutionPolicy Bypass \
+                        -Command "[System.Net.ServicePointManager]::SecurityProtocol = 3072; Set-ExecutionPolicy Bypass -Scope Process -Force; \
+                        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"
+                    export PATH="$PATH:/c/ProgramData/chocolatey/bin"
+                }
+                
+                if ! check_admin; then
+                    echo "Chocolatey installation requires administrator privileges."
+                    echo "Requesting elevation..."
+                    
+                    powershell.exe -Command "Start-Process -Verb RunAs -FilePath 'bash' -ArgumentList '-c', \"$(printf '%q' "$BASH_SOURCE")\""
+                    exit 0
+                else
+                    echo "Running with administrator privileges..."
+                    install_chocolatey
+                fi
             fi
-            ;;
-        *)
-            print_error "Unsupported OS: $OSTYPE"
+
+            if is_installed choco; then
+                echo "Chocolatey installed successfully."
+            fi
+
+            declare -A choco_pkgs
+            choco_pkgs=(
+                ["git"]="git"
+                ["gcc"]="mingw"
+                ["gdb"]="gdb"
+                ["ninja"]="ninja"
+                ["meson"]="meson"
+            )
+
+            local pkgs=()
+            for tool in git gcc gdb ninja meson; do
+                if ! is_installed "$tool"; then
+                    pkgs+=("${choco_pkgs[$tool]}")
+                fi
+            done
+
+            if [ ${#pkgs[@]} -gt 0 ]; then
+                choco install -y "${pkgs[@]}"
+            fi
             ;;
     esac
 
@@ -143,30 +210,17 @@ setup_build () {
     read -r -n 1 -p "Build Tests ? (y/n): " TESTS
     echo
 
-    if [[ "$DEV" =~ ^[Yy]$ ]]; then
-        DEV=true
-    else
-        DEV=false    
-    fi
-
-    if [[ "$EXAMPLES" =~ ^[Yy]$ ]]; then
-        EXAMPLES=true
-    else
-        EXAMPLES=false    
-    fi
-
-    if [[ "$TESTS" =~ ^[Yy]$ ]]; then
-        TESTS=true
-    else
-        TESTS=false    
-    fi
+    [[ "$DEV" =~ ^[Yy]$ ]] && DEV=true || DEV=false
+    [[ "$EXAMPLES" =~ ^[Yy]$ ]] && EXAMPLES=true || EXAMPLES=false
+    [[ "$TESTS" =~ ^[Yy]$ ]] && TESTS=true || TESTS=false
 
     meson setup "${BUILD_DIR}" -Ddev=$DEV -Dexamples=$EXAMPLES -Dtests=$TESTS \
         --prefix="${INSTALL_PREFIX}" \
         --buildtype="${BUILD_TYPE}" \
-        -Dcpp_std=c++23 \
+        --backend=ninja \
+        -Dcpp_std=c++17 \
         -Dwarning_level=3 \
-        -Db_lto=true
+        #-Db_lto=true
 
     print_status "Build system configured"
 }
@@ -183,6 +237,11 @@ build_project() {
 create_env_script() {
     print_status "Creating environment script..."
 
+    local install_path="$INSTALL_PREFIX"
+    if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+        install_path=$(cygpath -u "$INSTALL_PREFIX")
+    fi
+
     cat > env.sh << EOF
 #!/usr/bin/env bash
 
@@ -194,7 +253,19 @@ EOF
 }
 
 add_to_profile() {
-    local profile_file="${HOME}/.bashrc"
+    local profile_file
+
+    case "$OSTYPE" in
+        msys*)
+            profile_file=="${HOME}/.bash_profile"
+            ;;
+        cygwin*)
+            profile_file=="${HOME}/.bash_profile"
+            ;;
+        *)
+            profile_file=="${HOME}/.bashrc"
+            ;;
+    esac
 
     if ! grep -q "${PROJECT_NAME} environment" "${profile_file}"; then
         print_status "Adding environment setup to ${profile_file}"
@@ -229,9 +300,7 @@ main() {
 
     read -r -n 1 -p "Add environment to your shell profile? (y/n): " REPLY
     echo
-    if [[ "$REPLY" =~ ^[Yy]$ ]]; then
-        add_to_profile    
-    fi
+    [[ "$REPLY" =~ ^[Yy]$ ]] && add_to_profile
 
     print_status "Setup Complete!"
     print_warning "Run: source ./env.sh to activate the environment"

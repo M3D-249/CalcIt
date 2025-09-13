@@ -36,11 +36,11 @@ struct ArithmeticOperator
     enum class Type : char { NUmber, Function, Operator };
     Type type;
     std::string value;
-    uint precedence;
+    unsigned int precedence;
     bool leftAssociative;
     bool unary; // false means binary
 
-    explicit ArithmeticOperator(const std::string& value, uint precedence, bool leftAssociative, bool unary=false) 
+    explicit ArithmeticOperator(const std::string& value, unsigned int precedence, bool leftAssociative, bool unary=false) 
         : value(value), precedence(precedence), leftAssociative(leftAssociative), unary(unary)
     {  }
 

@@ -21,7 +21,7 @@ print_error() {
 }
 
 
-cd "${BUILD_DIR}" || cd "build" || rint_error "'build' folder doesn't exist"
+cd "build" || cd "${BUILD_DIR}" || print_error "'build' folder doesn't exist"
 ninja
 ninja install
 cd ..

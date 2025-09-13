@@ -9,6 +9,10 @@
 #include <stack>
 #include <cmath>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 #pragma region Maps & Lists
 std::map<char, ArithmeticOperator> _operators_map = 
 {
